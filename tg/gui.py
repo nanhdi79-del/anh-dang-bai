@@ -1,4 +1,4 @@
-import json, os, sys, urllib.request
+import json, os, re, sys, urllib.request
 TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 CHAT = os.environ.get("TELEGRAM_CHAT_ID", "8674492982")
 RAW = "https://raw.githubusercontent.com/nanhdi79-del/anh-dang-bai/main/"
@@ -12,7 +12,8 @@ def api(method, data):
 code = sys.argv[1]
 pkg = json.load(open(f"goi/{code}.json", encoding="utf-8"))
 fb = pkg.get("fb", {})
-text = (pkg.get("ten", code) + "\n\n" + fb.get("text", ""))[:1020]
+ten = re.sub(r"\s*\(.*?\)\s*$", "", pkg.get("ten", code))
+text = (ten + "\n\n" + fb.get("text", ""))[:1020]
 kb = {"inline_keyboard": [[
     {"text": "✅ Duyệt", "callback_data": f"duyet:{code}"},
     {"text": "✏️ Sửa", "callback_data": "sua"},
