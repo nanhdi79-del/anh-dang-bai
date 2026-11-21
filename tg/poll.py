@@ -53,10 +53,12 @@ CREATE = """mutation($i: CreatePostInput!){ createPost(input:$i){
   ... on MutationError { message } } }"""
 
 
-def post(ch, text, assets, meta=None):
+def post(ch, text, assets, meta=None, draft=False):
     inp = {"channelId": ch["id"], "text": text, "schedulingType": "automatic", "mode": "addToQueue", "assets": assets}
     if meta:
         inp["metadata"] = meta
+    if draft:
+        inp["saveToDraft"] = True
     r = gql(CREATE, {"i": inp})
     if r.get("errors"):
         return False, r["errors"][0]["message"]
@@ -66,7 +68,7 @@ def post(ch, text, assets, meta=None):
     return False, d.get("message", "loi khong ro")
 
 
-def publish_video(code, chat):
+def publish_video(code, chat, draft=False):
     pkg = json.load(open(f"goi/{code}.json", encoding="utf-8"))
     chs = [c for c in channels() if c["service"] in SERVICES]
     if not chs:
@@ -84,9 +86,9 @@ def publish_video(code, chat):
             blk, meta = pkg.get("tt", {}), None
         if not blk.get("video"):
             lines.append(f"- {s}: goi khong co video"); continue
-        ok, info = post(c, blk.get("text", ""), [{"video": {"url": url(blk["video"])}}], meta)
+        ok, info = post(c, blk.get("text", ""), [{"video": {"url": url(blk["video"])}}], meta, draft)
         lines.append(f"- {c.get('displayName') or c['name']} ({s}): {'OK, ' if ok else 'LOI: '}{info}")
-    say(chat, "Ket qua dua vao Buffer:\n" + "\n".join(lines))
+    say(chat, ("THU (chi luu nhap trong Buffer, CHUA dang):\n" if draft else "Ket qua dua vao Buffer:\n") + "\n".join(lines))
 
 
 def publish_image(code, chat):
@@ -116,13 +118,19 @@ def main():
         data, chat = cq.get("data", ""), cq["message"]["chat"]["id"]
         msg_id = cq["message"]["message_id"]
         tg("answerCallbackQuery", {"callback_query_id": cq["id"]})
-        tg("editMessageReplyMarkup", {"chat_id": chat, "message_id": msg_id, "reply_markup": {"inline_keyboard": []}})
+        if not data.startswith("thu:"):
+            tg("editMessageReplyMarkup", {"chat_id": chat, "message_id": msg_id, "reply_markup": {"inline_keyboard": []}})
         try:
             if data.startswith("duyet:"):
                 if not BUFFER:
                     say(chat, "Chua co BUFFER_API_KEY trong kho."); continue
                 say(chat, "Da duyet. Dang dua vao Buffer...")
                 publish_video(data.split(":", 1)[1], chat)
+            elif data.startswith("thu:"):
+                if not BUFFER:
+                    say(chat, "Chua co BUFFER_API_KEY trong kho."); continue
+                say(chat, "Dang thu: luu nhap vao Buffer, khong dang that...")
+                publish_video(data.split(":", 1)[1], chat, draft=True)
             elif data.startswith("dimg:"):
                 if not BUFFER:
                     say(chat, "Chua co BUFFER_API_KEY trong kho."); continue
