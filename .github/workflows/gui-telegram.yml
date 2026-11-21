@@ -1,0 +1,15 @@
+name: Gui bai sang Telegram
+on:
+  workflow_dispatch:
+    inputs:
+      code:
+        description: "Ma goi trong goi/ (vd darv1)"
+        required: true
+jobs:
+  gui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tg/gui.py "${{ inputs.code }}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
